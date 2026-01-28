@@ -2,6 +2,22 @@ import os
 import numpy as np
 from flask import Flask, request, render_template
 import pickle
+import google.generativeai as genai
+import PIL.Image
+import json
+from dotenv import load_dotenv  # <--- NEW IMPORT
+
+# Load environment variables
+load_dotenv()
+
+# --- CONFIGURATION ---
+# 1. Setup the API Key from the .env file
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+genai.configure(api_key=GOOGLE_API_KEY)
+
+# 2. The Brain
+model_ai = genai.GenerativeModel('gemini-flash-latest')
+# ---------------------
 
 # Create a dictionary with advice for each crop
 crop_advice = {
@@ -29,18 +45,30 @@ crop_advice = {
     'coffee': "Maximize Yield: Shade regulation is key. Quality Tip: Selective picking of red berries only."
 }
 
-app = Flask(__name__, template_folder='website', static_folder='website\static')
+app = Flask(__name__, template_folder='website', static_folder='website/static')
 
+# Load the ML Model
+# Ensure this path is correct relative to where you run the script
 model_path = os.path.join(os.path.dirname(__file__), 'ML_model', 'crop_prediction.pkl')
-with open(model_path, 'rb') as f:
-    model = pickle.load(f)
+
+# Simple check to prevent crash if model is missing during testing
+if os.path.exists(model_path):
+    with open(model_path, 'rb') as f:
+        model = pickle.load(f)
+else:
+    model = None
+    print(f"WARNING: Model file not found at {model_path}")
 
 @app.route('/')
 def home():
     return render_template('index.html')
 
+# --- CROP PREDICTION ---
 @app.route('/predict', methods=['POST'])
 def predict():
+    if model is None:
+        return render_template('index.html', prediction_text="Error: ML Model not found.")
+
     try:
         N = float(request.form['N'])
         P = float(request.form['P'])
@@ -50,12 +78,57 @@ def predict():
         ph = float(request.form['ph'])
         rainfall = float(request.form['Rainfall'])
     except (KeyError, ValueError):
-        return render_template('index.html', prediction_text='Invalid input: please enter numeric values for all fields.')
+        return render_template('index.html', prediction_text='Invalid input: please enter numeric values.')
 
     features = np.array([[N, P, K, temperature, humidity, ph, rainfall]])
     prediction = model.predict(features)
     output = prediction[0]
-    return render_template('index.html', prediction_text=f'The Crop is {output}')
+    
+    advice = crop_advice.get(output, "No specific advice available.")
+
+    return render_template('index.html', prediction_text=f'Recommended Crop: {output}', advice_text=advice)
+
+# --- DISEASE DETECTION ---
+@app.route('/disease-predict', methods=['POST'])
+def disease_predict():
+    if 'file' not in request.files:
+        return render_template('index.html', disease_result="No file uploaded.")
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return render_template('index.html', disease_result="No file selected.")
+
+    if file:
+        try:
+            img = PIL.Image.open(file)
+
+            prompt = """
+            Analyze this plant image. Identify the disease.
+            Return a JSON object with:
+            {
+                "disease_name": "Name of the disease",
+                "status": "Healthy or Infected",
+                "remedy_organic": "One organic/home remedy description",
+                "remedy_chemical": "One recommended chemical medicine/pesticide name",
+                "prevention": "Short prevention tip"
+            }
+            """
+
+            response = model_ai.generate_content([prompt, img])
+            
+            cleaned_text = response.text.replace("```json", "").replace("```", "")
+            result_data = json.loads(cleaned_text)
+
+            disease_msg = f"Detected: {result_data['disease_name']} ({result_data['status']})"
+            remedy_msg = result_data['remedy_organic']
+            chem_msg = result_data['remedy_chemical']
+            
+            return render_template('index.html', disease_result=disease_msg, organic_result=remedy_msg, chemical_result=chem_msg)
+        
+        except Exception as e:
+            print(f"Error: {e}") 
+            return render_template('index.html', disease_result=f"Error: {str(e)}")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
