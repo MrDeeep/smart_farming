@@ -1,0 +1,7 @@
+Flask
+google-genai
+python-dotenv
+numpy
+scikit-learn
+gunicorn
+Pillow

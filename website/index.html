@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Farmer Assistant</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* Nicer font */
+            /* Background Image */
+            background-image: url('https://raw.githubusercontent.com/MrDeeep/smart_farming/main/Crop_Prediction/crop_prediction/website/smart_image.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+
+            /* --- TRANSLUCENT EFFECT STARTS HERE --- */
+            background: rgba(255, 255, 255, 0.3);
+            /* 0.85 means 85% visible, 15% transparent */
+            backdrop-filter: blur(4px);
+            /* This blurs the background image BEHIND the box */
+            -webkit-backdrop-filter: blur(8px);
+            /* For Safari browser support */
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            /* Subtle white border */
+            /* ------------------------------------- */
+
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: #1a5e20;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #a5d6a7;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+
+        /* Form Styles */
+        label {
+            font-weight: 600;
+            display: block;
+            margin-top: 15px;
+            color: #333;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            margin-top: 20px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        /* Result Styles */
+        .result-box {
+            margin-top: 25px;
+            padding: 20px;
+            background-color: rgba(232, 245, 233, 0.9);
+            border-radius: 8px;
+            border-left: 5px solid #28a745;
+        }
+
+        /* Section Dividers */
+        hr {
+            margin: 40px 0;
+            border: 0;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        /* Disease Section */
+        .disease-section {
+            background-color: rgba(255, 243, 205, 0.9);
+            /* Also translucent yellow */
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid #ffeeba;
+        }
+
+        .disease-btn {
+            background-color: #ffc107;
+            color: #4a3b00;
+        }
+
+        .disease-btn:hover {
+            background-color: #e0a800;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>🌾 Smart Farming Assistant</h1>
+
+        <h2>1. Crop Recommender</h2>
+        <p style="text-align: center; color: #555;">Enter soil details to find the best crop.</p>
+
+        <form action="/predict" method="post">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div><label>Nitrogen (N)</label><input type="number" step="any" name="N" required></div>
+                <div><label>Phosphorus (P)</label><input type="number" step="any" name="P" required></div>
+                <div><label>Potassium (K)</label><input type="number" step="any" name="K" required></div>
+                <div><label>Temperature (°C)</label><input type="number" step="any" name="temperature" required></div>
+                <div><label>Humidity (%)</label><input type="number" step="any" name="humidity" required></div>
+                <div><label>pH Value</label><input type="number" step="any" name="ph" required></div>
+                <div style="grid-column: span 2;"><label>Rainfall (mm)</label><input type="number" step="any"
+                        name="Rainfall" required></div>
+            </div>
+            <button type="submit">Predict Best Crop</button>
+        </form>
+
+        {% if prediction_text %}
+        <div class="result-box">
+            <h3 style="margin-top: 0;">{{ prediction_text }}</h3>
+            {% if advice_text %}
+            <p><strong>💡 Expert Advice:</strong> {{ advice_text }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+
+        <hr>
+        <div class="disease-section">
+            <h2>2. Plant Disease Doctor 📸</h2>
+            <p style="text-align: center; color: #665c3b;">Upload a photo of the affected plant leaf.</p>
+
+            <form action="/disease-predict" method="post" enctype="multipart/form-data" id="cameraForm">
+                <label for="cameraInput" class="disease-btn"
+                    style="display: block; width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 8px; text-align: center; cursor: pointer; background-color: #28a745; color: white; font-size: 18px; font-weight: bold;">
+                    📸 Take a Photo
+                </label>
+                <input type="file" id="cameraInput" name="file" accept="image/*" capture="environment"
+                    style="display: none;" onchange="document.getElementById('cameraForm').submit();">
+            </form>
+
+            <div style="text-align: center; margin: 10px; color: #666;">- OR -</div>
+
+            <form action="/disease-predict" method="post" enctype="multipart/form-data" id="fileForm">
+                <label for="fileInput"
+                    style="display: block; width: 100%; padding: 15px; border: 2px dashed #28a745; border-radius: 8px; text-align: center; cursor: pointer; background-color: white; color: #28a745; font-size: 18px; font-weight: bold;">
+                    📁 Upload from Gallery
+                </label>
+                <input type="file" id="fileInput" name="file" accept="image/*" style="display: none;"
+                    onchange="document.getElementById('fileForm').submit();">
+            </form>
+
+            <div id="loadingMsg"
+                style="display: none; text-align: center; margin-top: 20px; font-weight: bold; color: #d9534f;">
+                ⏳ Analyzing Plant... Please wait.
+            </div>
+
+            <script>
+                // Show loading message when camera is used
+                document.getElementById('cameraInput').onchange = function () {
+                    if (this.files.length > 0) {
+                        document.getElementById('loadingMsg').style.display = 'block';
+                        document.getElementById('cameraForm').submit();
+                    }
+                };
+
+                // Show loading message when gallery is used
+                document.getElementById('fileInput').onchange = function () {
+                    if (this.files.length > 0) {
+                        document.getElementById('loadingMsg').style.display = 'block';
+                        document.getElementById('fileForm').submit();
+                    }
+                };
+            </script>
+
+            {% if disease_result %}
+            <div
+                style="background-color: white; padding: 20px; margin-top: 20px; border-radius: 8px; border-left: 5px solid #d9534f; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                <h3 style="color: #d9534f; margin-top: 0;">{{ disease_result }}</h3>
+                <p><strong>🍃 Organic Remedy:</strong> {{ organic_result }}</p>
+                <p><strong>🧪 Recommended Medicine:</strong> {{ chemical_result }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+
+</body>
+
+</html>
